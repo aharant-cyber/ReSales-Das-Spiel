@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altkleider Tycoon - Vintage Wars</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        termGreen: '#00ff66',
+                        termCyan: '#00f3ff',
+                        termPink: '#ff0055',
+                        termYellow: '#ffcc00',
+                        termBg: '#0a0d14',
+                        termCard: '#121824',
+                        termBorder: '#1e293b'
+                    },
+                    fontFamily: {
+                        mono: ['"Fira Code"', 'monospace'],
+                        pixel: ['"Press Start 2P"', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0a0d14;
+            color: #e2e8f0;
+            font-family: 'Fira Code', monospace;
+        }
+        .scanline {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0, 0, 0, 0.3) 50%,
+                rgba(0, 0, 0, 0.3)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+        .glow-green {
+            text-shadow: 0 0 8px rgba(0, 255, 102, 0.6);
+        }
+        .glow-pink {
+            text-shadow: 0 0 8px rgba(255, 0, 85, 0.6);
+        }
+        .glow-cyan {
+            text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0d14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f3ff;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative bg-termBg text-slate-200 select-none">
+    <div class="scanline fixed inset-0 z-50 pointer-events-none opacity-40"></div>
+
+    <!-- Header -->
+    <header class="border-b border-termBorder bg-termCard/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">👕</span>
+                <div>
+                    <h1 class="font-pixel text-xs sm:text-sm text-termCyan glow-cyan tracking-wider">ALTKLEIDER TYCOON</h1>
+                    <p class="text-xs text-slate-400">Vintage Wars v1.0</p>
+                </div>
+            </div>
+
+            <!-- Global Status Bar -->
+            <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+                <div class="bg-termBg border border-termBorder px-3 py-1.5 rounded flex items-center gap-1.5">
+                    <span class="text-slate-400">📅 Tag:</span>
+                    <span id="stat-day" class="text-termYellow font-bold">1/30</span>
+                </div>
+                <div class="bg-termBg border border-termBorder px-3 py-1.5 rounded flex items-center gap-1.5">
+                    <span class="text-slate-400">📍 Ort:</span>
+                    <span id="stat-location" class="text-termCyan font-bold">Berlin</span>
+                </div>
+                <div class="bg-termBg border border-termBorder px-3 py-1.5 rounded flex items-center gap-1.5">
+                    <span class="text-slate-400">💵 Bar:</span>
+                    <span id="stat-cash" class="text-termGreen font-bold">2.000 €</span>
+                </div>
+                <div class="bg-termBg border border-termBorder px-3 py-1.5 rounded flex items-center gap-1.5">
+                    <span class="text-slate-400">🏦 Bank:</span>
+                    <span id="stat-bank" class="text-sky-400 font-bold">0 €</span>
+                </div>
+                <div class="bg-termBg border border-termBorder px-3 py-1.5 rounded flex items-center gap-1.5">
+                    <span class="text-slate-400">🦈 Hai:</span>
+                    <span id="stat-debt" class="text-termPink font-bold">1.500 €</span>
+                </div>
+                <button id="sound-toggle-btn" onclick="toggleSound()" class="p-1.5 rounded border border-termBorder bg-termBg hover:border-termCyan text-xs">
+                    🔊 Sound
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl w-full mx-auto p-3 sm:p-5 flex-grow grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        <!-- Left Column: Navigation & Capacity & News Log -->
+        <div class="space-y-5 flex flex-col">
+            
+            <!-- Fuhrpark / Capacity Info -->
+            <div class="bg-termCard border border-termBorder rounded-lg p-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-pixel text-slate-300 flex items-center gap-2">
+                        <span>📦</span> KAZAPITÄT & TRANSPORT
+                    </h2>
+                    <span id="vehicle-name" class="text-xs text-termYellow font-semibold">Tüte</span>
+                </div>
+                <div class="w-full bg-termBg rounded-full h-3 border border-termBorder overflow-hidden">
+                    <div id="capacity-bar" class="bg-termGreen h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-2 text-slate-400">
+                    <span>Belegt: <strong id="capacity-used" class="text-slate-200">0</strong> Stk.</span>
+                    <span>Max: <strong id="capacity-max" class="text-slate-200">100</strong> Stk.</span>
+                </div>
+            </div>
+
+            <!-- Action Navigation Tabs -->
+            <div class="bg-termCard border border-termBorder rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
+                <button id="nav-market" onclick="switchTab('market')" class="py-2.5 px-3 rounded bg-termCyan/20 text-termCyan border border-termCyan font-bold flex items-center justify-center gap-2 transition">
+                    <span>🛍️</span> Markt
+                </button>
+                <button id="nav-travel" onclick="switchTab('travel')" class="py-2.5 px-3 rounded bg-termBg text-slate-400 border border-termBorder hover:border-slate-500 flex items-center justify-center gap-2 transition">
+                    <span>✈️</span> Reisen
+                </button>
+                <button id="nav-bank" onclick="switchTab('bank')" class="py-2.5 px-3 rounded bg-termBg text-slate-400 border border-termBorder hover:border-slate-500 flex items-center justify-center gap-2 transition">
+                    <span>🏦</span> Finanzen
+                </button>
+                <button id="nav-upgrades" onclick="switchTab('upgrades')" class="py-2.5 px-3 rounded bg-termBg text-slate-400 border border-termBorder hover:border-slate-500 flex items-center justify-center gap-2 transition">
+                    <span>🚚</span> Fuhrpark
+                </button>
+            </div>
+
+            <!-- Logbook / Event Ticker -->
+            <div class="bg-termCard border border-termBorder rounded-lg p-4 flex-grow flex flex-col">
+                <h2 class="text-xs font-pixel text-slate-300 mb-3 flex items-center gap-2">
+                    <span>📜</span> EREIGNIS-LOGBUCH
+                </h2>
+                <div id="log-box" class="bg-termBg border border-termBorder rounded p-3 text-xs space-y-2 h-48 lg:h-auto flex-grow overflow-y-auto font-mono">
+                    <div class="text-slate-500 italic">Willkommen bei Altkleider Tycoon! Kaufe billig ein und verkaufe teuer in anderen Städten.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle & Right Column: Dynamic Panel (Market / Travel / Bank / Fleet) -->
+        <div class="lg:col-span-2 flex flex-col">
+
+            <!-- TAB 1: MARKET PLACE -->
+            <div id="tab-market" class="bg-termCard border border-termBorder rounded-lg p-4 flex-grow flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-pixel text-termGreen glow-green flex items-center gap-2">
+                        <span>🏷️</span> HANDELSPLATZ: <span id="market-city-name" class="uppercase">BERLIN</span>
+                    </h2>
+                    <span class="text-xs text-slate-400">Aktuelle Preise pro Stück</span>
+                </div>
+
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead>
+                            <tr class="border-b border-termBorder text-slate-400">
+                                <th class="pb-2">Ware</th>
+                                <th class="pb-2 text-right">Preis</th>
+                                <th class="pb-2 text-right">Im Besitz</th>
+                                <th class="pb-2 text-center">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="market-table-body" class="divide-y divide-termBorder/50">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: TRAVEL -->
+            <div id="tab-travel" class="bg-termCard border border-termBorder rounded-lg p-4 flex-grow hidden">
+                <h2 class="text-sm font-pixel text-termCyan glow-cyan mb-2 flex items-center gap-2">
+                    <span>🗺️</span> STADT WECHSELN
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">Jede Reise dauert genau 1 Tag. Preise ändern sich mit jeder Ankunft!</p>
+                
+                <div id="cities-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
+            <!-- TAB 3: BANK & LOAN SHARK -->
+            <div id="tab-bank" class="bg-termCard border border-termBorder rounded-lg p-4 flex-grow hidden">
+                <h2 class="text-sm font-pixel text-sky-400 mb-2 flex items-center gap-2">
+                    <span>🏦</span> BANK & KREDITHAI
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">Schulden verlangen täglich 10% Zinsen! Auf der Bank erhältst du 2% Zinsen pro Tag.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Bank Box -->
+                    <div class="bg-termBg border border-termBorder p-4 rounded-lg flex flex-col justify-between space-y-3">
+                        <div>
+                            <h3 class="text-sm font-bold text-sky-400 flex items-center gap-2">
+                                <span>🏛️</span> Sparkasse
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Sicherer Ort für dein Erspartes.</p>
+                            <div class="mt-3 text-sm">
+                                Guthaben: <span id="bank-val" class="font-bold text-slate-200">0 €</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <button onclick="bankDeposit()" class="w-full py-2 bg-sky-900/40 hover:bg-sky-800/60 border border-sky-600 text-sky-300 text-xs rounded font-bold">
+                                Einzahlen (Alles)
+                            </button>
+                            <button onclick="bankWithdraw()" class="w-full py-2 bg-termBg hover:bg-slate-800 border border-termBorder text-slate-300 text-xs rounded">
+                                Abheben (Alles)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loan Shark Box -->
+                    <div class="bg-termBg border border-termBorder p-4 rounded-lg flex flex-col justify-between space-y-3">
+                        <div>
+                            <h3 class="text-sm font-bold text-termPink flex items-center gap-2">
+                                <span>🦈</span> Kredithai "Eugen"
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Zahlt deine Schulden ab, bevor Eugen böse wird!</p>
+                            <div class="mt-3 text-sm">
+                                Schulden: <span id="debt-val" class="font-bold text-termPink">1.500 €</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <button onclick="payDebt()" class="w-full py-2 bg-termPink/20 hover:bg-termPink/40 border border-termPink text-termPink text-xs rounded font-bold">
+                                Schulden begleichen
+                            </button>
+                            <button onclick="takeLoan()" class="w-full py-2 bg-termBg hover:bg-slate-800 border border-termBorder text-slate-300 text-xs rounded">
+                                1.000 € Kredit aufnehmen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: FLEET UPGRADES -->
+            <div id="tab-upgrades" class="bg-termCard border border-termBorder rounded-lg p-4 flex-grow hidden">
+                <h2 class="text-sm font-pixel text-termYellow mb-2 flex items-center gap-2">
+                    <span>🚚</span> FUHRPARK & LAGERHAUS
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">Erhöhe deine Ladekapazität, um mehr Altkleider transportieren zu können.</p>
+
+                <div id="upgrades-list" class="space-y-3">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-termBorder bg-termCard/50 py-3 text-center text-xs text-slate-500">
+        <p>Altkleider Tycoon &copy; 2026 - Retro-Wirtschaftssimulation inspiriert von Klassikern.</p>
+    </footer>
+
+    <!-- Buy / Sell Modal -->
+    <div id="trade-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-termCard border border-termBorder w-full max-w-md rounded-lg p-5 shadow-2xl relative">
+            <button onclick="closeTradeModal()" class="absolute top-3 right-3 text-slate-400 hover:text-white text-lg">✕</button>
+            
+            <h3 id="modal-title" class="text-sm font-pixel text-termCyan mb-1">WARE KAUFEN</h3>
+            <p id="modal-subtitle" class="text-xs text-slate-400 mb-4">Fast Fashion Restposten</p>
+
+            <div class="space-y-3 text-xs sm:text-sm">
+                <div class="flex justify-between border-b border-termBorder/50 pb-1">
+                    <span class="text-slate-400">Einzelpreis:</span>
+                    <span id="modal-price" class="font-bold text-termGreen">10 €</span>
+                </div>
+                <div class="flex justify-between border-b border-termBorder/50 pb-1">
+                    <span class="text-slate-400">Verfügbarer Platz:</span>
+                    <span id="modal-space" class="font-bold text-slate-200">100 Stk.</span>
+                </div>
+                <div class="flex justify-between border-b border-termBorder/50 pb-1">
+                    <span class="text-slate-400">Dein Bargeld:</span>
+                    <span id="modal-cash" class="font-bold text-slate-200">2.000 €</span>
+                </div>
+
+                <div class="pt-2">
+                    <label class="block text-slate-400 text-xs mb-1">Menge eingeben:</label>
+                    <div class="flex gap-2">
+                        <input id="modal-amount-input" type="number" min="1" value="1" oninput="updateModalTotal()"
+                            class="bg-termBg border border-termBorder rounded px-3 py-2 text-slate-100 w-full focus:outline-none focus:border-termCyan">
+                        <button onclick="setModalMax()" class="bg-termBg border border-termBorder hover:border-slate-400 px-3 py-2 rounded text-xs font-bold text-termYellow">
+                            MAX
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-between text-base font-bold pt-2 border-t border-termBorder">
+                    <span>Gesamtpreis:</span>
+                    <span id="modal-total" class="text-termGreen">10 €</span>
+                </div>
+
+                <button id="modal-action-btn" onclick="executeTrade()" class="w-full py-3 bg-termGreen hover:bg-emerald-400 text-slate-950 font-bold rounded transition">
+                    BESTÄTIGEN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start / Restart / Game Over Overlay -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-termCard border border-termBorder w-full max-w-lg rounded-lg p-6 text-center space-y-4 shadow-2xl">
+            <h2 id="start-title" class="text-base sm:text-lg font-pixel text-termGreen glow-green">ALTKLEIDER TYCOON</h2>
+            <p id="start-desc" class="text-xs text-slate-300 leading-relaxed">
+                Willkommen im Altkleider-Business! Du hast ein wenig Startkapital und ein paar Schulden beim berüchtigten Kredithai "Eugen".
+                Reise durch Deutschland, kaufe günstig Vintage-Kleidung ein und verkaufe sie mit maximalem Gewinn.
+            </p>
+
+            <!-- Duration Selection -->
+            <div class="bg-termBg border border-termBorder p-3 rounded text-left space-y-2">
+                <label class="text-xs text-slate-400 block font-bold">WÄHLE SPIELDAUER:</label>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <button onclick="selectDays(20)" id="btn-days-20" class="py-2 border border-termBorder rounded bg-termBg hover:border-termCyan text-slate-300">20 Tage</button>
+                    <button onclick="selectDays(30)" id="btn-days-30" class="py-2 border border-termCyan rounded bg-termCyan/20 text-termCyan font-bold">30 Tage</button>
+                    <button onclick="selectDays(50)" id="btn-days-50" class="py-2 border border-termBorder rounded bg-termBg hover:border-termCyan text-slate-300">50 Tage</button>
+                </div>
+            </div>
+
+            <!-- Stats Summary (Only shown on game over) -->
+            <div id="game-over-stats" class="hidden bg-termBg border border-termBorder p-3 rounded text-xs text-left space-y-1">
+                <div class="flex justify-between"><span>Erzieltes Vermögen:</span><span id="final-networth" class="font-bold text-termGreen">0 €</span></div>
+                <div class="flex justify-between"><span>Bargeld:</span><span id="final-cash">0 €</span></div>
+                <div class="flex justify-between"><span>Bankguthaben:</span><span id="final-bank">0 €</span></div>
+                <div class="flex justify-between text-termPink"><span>Offene Schulden:</span><span id="final-debt">0 €</span></div>
+            </div>
+
+            <!-- Highscores -->
+            <div class="bg-termBg border border-termBorder p-3 rounded text-left space-y-2">
+                <h3 class="text-xs font-bold text-termYellow flex items-center gap-1">🏆 BESTENLISTE</h3>
+                <div id="highscore-list" class="text-xs space-y-1 text-slate-400 max-h-32 overflow-y-auto">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="w-full py-3 bg-termGreen hover:bg-emerald-400 text-slate-950 font-bold rounded font-pixel text-xs transition">
+                NEUES SPIEL STARTEN
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- AUDIO SYNTHESIS (Web Audio API) ---
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'buy') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'sell') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(500, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'event') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.setValueAtTime(400, now + 0.08);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'warn') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.setValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('sound-toggle-btn');
+            btn.innerText = soundEnabled ? '🔊 Sound' : '🔇 Stumm';
+            if (soundEnabled) playSound('click');
+        }
+
+        // --- GAME DATA STRUCTURES ---
+        const GOODS = [
+            { id: 'fast_fashion', name: 'Fast Fashion Restposten', minPrice: 5, maxPrice: 25, icon: '👕' },
+            { id: 'jeans', name: 'Jeans & Denim Classics', minPrice: 20, maxPrice: 75, icon: '👖' },
+            { id: 'leather', name: 'Vintage Lederjacken', minPrice: 60, maxPrice: 220, icon: '🧥' },
+            { id: 'sneakers', name: 'Designer Sneaker', minPrice: 100, maxPrice: 600, icon: '👟' },
+            { id: 'handbags', name: 'Luxus-Handtaschen', minPrice: 300, maxPrice: 1500, icon: '👜' },
+            { id: 'band_shirts', name: 'Seltene Band-Shirts', minPrice: 50, maxPrice: 800, icon: '🎸' }
+        ];
+
+        const CITIES = ['Berlin', 'Hamburg', 'München', 'Leipzig', 'Köln', 'Frankfurt'];
+
+        const UPGRADES = [
+            { name: 'Große Plastiktüte', capacity: 100, price: 0 },
+            { name: 'Kombi-Kofferraum', capacity: 300, price: 800 },
+            { name: 'Kleintransporter', capacity: 800, price: 3500 },
+            { name: 'LKW-Ladefläche', capacity: 2000, price: 12000 },
+            { name: 'Großes Lagerhaus', capacity: 5000, price: 40000 }
+        ];
+
+        // --- GAME STATE ---
+        let gameState = {
+            day: 1,
+            maxDays: 30,
+            location: 'Berlin',
+            cash: 2000,
+            bank: 0,
+            debt: 1500,
+            vehicleIndex: 0,
+            inventory: {},
+            prices: {},
+            activeTrade: null // { item, mode: 'buy'|'sell' }
+        };
+
+        // --- INITIALIZATION ---
+        function selectDays(days) {
+            gameState.maxDays = days;
+            [20, 30, 50].forEach(d => {
+                const btn = document.getElementById(`btn-days-${d}`);
+                if (d === days) {
+                    btn.className = "py-2 border border-termCyan rounded bg-termCyan/20 text-termCyan font-bold";
+                } else {
+                    btn.className = "py-2 border border-termBorder rounded bg-termBg hover:border-termCyan text-slate-300";
+                }
+            });
+            playSound('click');
+        }
+
+        function startGame() {
+            playSound('click');
+            gameState.day = 1;
+            gameState.location = 'Berlin';
+            gameState.cash = 2000;
+            gameState.bank = 0;
+            gameState.debt = 1500;
+            gameState.vehicleIndex = 0;
+            gameState.inventory = {};
+            
+            GOODS.forEach(g => gameState.inventory[g.id] = 0);
+
+            generatePrices();
+            document.getElementById('game-over-modal').classList.add('hidden');
+            document.getElementById('log-box').innerHTML = '';
+            
+            addLog('🚀 **Neues Spiel gestartet!** Du stehst in Berlin. Viel Erfolg beim Handeln!');
+            updateUI();
+        }
+
+        function generatePrices() {
+            gameState.prices = {};
+            GOODS.forEach(good => {
+                // Random price within min and max range
+                let base = Math.floor(Math.random() * (good.maxPrice - good.minPrice + 1)) + good.minPrice;
+                gameState.prices[good.id] = base;
+            });
+        }
+
+        function getCapacityUsed() {
+            return Object.values(gameState.inventory).reduce((a, b) => a + b, 0);
+        }
+
+        function getMaxCapacity() {
+            return UPGRADES[gameState.vehicleIndex].capacity;
+        }
+
+        // --- NAVIGATION TABS ---
+        function switchTab(tab) {
+            playSound('click');
+            ['market', 'travel', 'bank', 'upgrades'].forEach(t => {
+                const btn = document.getElementById(`nav-${t}`);
+                const panel = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    btn.className = "py-2.5 px-3 rounded bg-termCyan/20 text-termCyan border border-termCyan font-bold flex items-center justify-center gap-2 transition";
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.className = "py-2.5 px-3 rounded bg-termBg text-slate-400 border border-termBorder hover:border-slate-500 flex items-center justify-center gap-2 transition";
+                    panel.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- RENDER FUNCTIONS ---
+        function updateUI() {
+            // Stats
+            document.getElementById('stat-day').innerText = `${gameState.day}/${gameState.maxDays}`;
+            document.getElementById('stat-location').innerText = gameState.location;
+            document.getElementById('stat-cash').innerText = `${gameState.cash.toLocaleString('de-DE')} €`;
+            document.getElementById('stat-bank').innerText = `${gameState.bank.toLocaleString('de-DE')} €`;
+            document.getElementById('stat-debt').innerText = `${gameState.debt.toLocaleString('de-DE')} €`;
+
+            // Vehicle & Capacity
+            const vehicle = UPGRADES[gameState.vehicleIndex];
+            const used = getCapacityUsed();
+            const max = vehicle.capacity;
+            const pct = Math.min(100, Math.round((used / max) * 100));
+
+            document.getElementById('vehicle-name').innerText = vehicle.name;
+            document.getElementById('capacity-used').innerText = used;
+            document.getElementById('capacity-max').innerText = max;
+            
+            const bar = document.getElementById('capacity-bar');
+            bar.style.width = `${pct}%`;
+            bar.className = pct >= 90 ? "bg-termPink h-full transition-all duration-300" : "bg-termGreen h-full transition-all duration-300";
+
+            // Render Subviews
+            renderMarket();
+            renderTravel();
+            renderBank();
+            renderUpgrades();
+            renderHighscores();
+        }
+
+        function renderMarket() {
+            document.getElementById('market-city-name').innerText = gameState.location;
+            const tbody = document.getElementById('market-table-body');
+            tbody.innerHTML = '';
+
+            GOODS.forEach(good => {
+                const price = gameState.prices[good.id];
+                const owned = gameState.inventory[good.id] || 0;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-termBg/50 transition border-b border-termBorder/30";
+                tr.innerHTML = `
+                    <td class="py-3 font-semibold flex items-center gap-2">
+                        <span class="text-base">${good.icon}</span>
+                        <div>
+                            <div>${good.name}</div>
+                        </div>
+                    </td>
+                    <td class="py-3 text-right font-mono font-bold ${price < (good.minPrice + good.maxPrice)/2.5 ? 'text-termGreen' : price > (good.minPrice + good.maxPrice)*0.7 ? 'text-termPink' : 'text-slate-200'}">
+                        ${price.toLocaleString('de-DE')} €
+                    </td>
+                    <td class="py-3 text-right font-mono text-slate-300">${owned} Stk.</td>
+                    <td class="py-3 text-center space-x-1">
+                        <button onclick="openTradeModal('${good.id}', 'buy')" class="px-2.5 py-1 bg-termGreen/20 hover:bg-termGreen/40 border border-termGreen text-termGreen text-xs rounded font-bold">Kaufen</button>
+                        <button onclick="openTradeModal('${good.id}', 'sell')" ${owned === 0 ? 'disabled class="opacity-30 cursor-not-allowed px-2.5 py-1 bg-slate-800 text-slate-500 text-xs rounded"' : 'class="px-2.5 py-1 bg-termPink/20 hover:bg-termPink/40 border border-termPink text-termPink text-xs rounded font-bold"'}>Verkaufen</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTravel() {
+            const grid = document.getElementById('cities-grid');
+            grid.innerHTML = '';
+
+            CITIES.forEach(city => {
+                const isCurrent = city === gameState.location;
+                const btn = document.createElement('button');
+                btn.disabled = isCurrent;
+                btn.className = isCurrent 
+                    ? "p-4 rounded-lg border border-termCyan/50 bg-termCyan/10 text-slate-400 text-left flex justify-between items-center opacity-60 cursor-default"
+                    : "p-4 rounded-lg border border-termBorder bg-termBg hover:border-termCyan text-left flex justify-between items-center transition group";
+
+                btn.onclick = () => travelTo(city);
+                btn.innerHTML = `
+                    <div>
+                        <div class="font-bold text-sm ${isCurrent ? 'text-termCyan' : 'text-slate-200 group-hover:text-termCyan'}">📍 ${city}</div>
+                        <div class="text-xs text-slate-500 mt-1">${isCurrent ? 'Aktueller Standort' : 'Reisezeit: 1 Tag'}</div>
+                    </div>
+                    <span class="text-xs ${isCurrent ? 'hidden' : 'text-termCyan font-bold'}">Fliegen ✈️</span>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        function renderBank() {
+            document.getElementById('bank-val').innerText = `${gameState.bank.toLocaleString('de-DE')} €`;
+            document.getElementById('debt-val').innerText = `${gameState.debt.toLocaleString('de-DE')} €`;
+        }
+
+        function renderUpgrades() {
+            const list = document.getElementById('upgrades-list');
+            list.innerHTML = '';
+
+            UPGRADES.forEach((upg, idx) => {
+                const isOwned = gameState.vehicleIndex >= idx;
+                const isNext = gameState.vehicleIndex + 1 === idx;
+
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-lg border flex justify-between items-center ${isOwned ? 'border-termGreen/40 bg-termGreen/5' : isNext ? 'border-termBorder bg-termBg' : 'border-termBorder/50 opacity-40 bg-termBg'}`;
+
+                div.innerHTML = `
+                    <div>
+                        <div class="font-bold text-xs sm:text-sm text-slate-200">${upg.name}</div>
+                        <div class="text-xs text-slate-400">Kapazität: <span class="text-termYellow">${upg.capacity} Stk.</span></div>
+                    </div>
+                    <div>
+                        ${isOwned 
+                            ? '<span class="text-xs text-termGreen font-bold">In Besitz</span>' 
+                            : `<button onclick="buyUpgrade(${idx})" ${!isNext ? 'disabled' : ''} class="px-3 py-1.5 ${isNext ? 'bg-termYellow text-slate-950 hover:bg-yellow-400 font-bold' : 'bg-slate-800 text-slate-500'} text-xs rounded">
+                                ${upg.price.toLocaleString('de-DE')} €
+                               </button>`
+                        }
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // --- TRADE MODAL LOGIC ---
+        function openTradeModal(itemId, mode) {
+            playSound('click');
+            const good = GOODS.find(g => g.id === itemId);
+            const price = gameState.prices[itemId];
+            const owned = gameState.inventory[itemId] || 0;
+            const spaceLeft = getMaxCapacity() - getCapacityUsed();
+
+            gameState.activeTrade = { item: good, mode, price, owned, spaceLeft };
+
+            document.getElementById('modal-title').innerText = mode === 'buy' ? 'WARE KAUFEN' : 'WARE VERKAUFEN';
+            document.getElementById('modal-title').className = mode === 'buy' ? 'text-sm font-pixel text-termGreen' : 'text-sm font-pixel text-termPink';
+            document.getElementById('modal-subtitle').innerText = `${good.icon} ${good.name}`;
+            document.getElementById('modal-price').innerText = `${price.toLocaleString('de-DE')} €`;
+            document.getElementById('modal-space').innerText = `${spaceLeft} Stk.`;
+            document.getElementById('modal-cash').innerText = `${gameState.cash.toLocaleString('de-DE')} €`;
+
+            const btn = document.getElementById('modal-action-btn');
+            btn.innerText = mode === 'buy' ? 'KAUFEN' : 'VERKAUFEN';
+            btn.className = mode === 'buy' 
+                ? 'w-full py-3 bg-termGreen hover:bg-emerald-400 text-slate-950 font-bold rounded transition'
+                : 'w-full py-3 bg-termPink hover:bg-rose-600 text-white font-bold rounded transition';
+
+            document.getElementById('modal-amount-input').value = 1;
+            updateModalTotal();
+
+            document.getElementById('trade-modal').classList.remove('hidden');
+        }
+
+        function closeTradeModal() {
+            playSound('click');
+            document.getElementById('trade-modal').classList.add('hidden');
+        }
+
+        function setModalMax() {
+            playSound('click');
+            const t = gameState.activeTrade;
+            if (!t) return;
+
+            let max = 0;
+            if (t.mode === 'buy') {
+                const maxByCash = Math.floor(gameState.cash / t.price);
+                max = Math.min(maxByCash, t.spaceLeft);
+            } else {
+                max = t.owned;
+            }
+
+            document.getElementById('modal-amount-input').value = Math.max(1, max);
+            updateModalTotal();
+        }
+
+        function updateModalTotal() {
+            const amount = parseInt(document.getElementById('modal-amount-input').value) || 0;
+            const t = gameState.activeTrade;
+            if (!t) return;
+
+            const total = amount * t.price;
+            document.getElementById('modal-total').innerText = `${total.toLocaleString('de-DE')} €`;
+        }
+
+        function executeTrade() {
+            const amount = parseInt(document.getElementById('modal-amount-input').value) || 0;
+            const t = gameState.activeTrade;
+            if (!t || amount <= 0) return;
+
+            const total = amount * t.price;
+
+            if (t.mode === 'buy') {
+                if (total > gameState.cash) {
+                    playSound('warn');
+                    alert('Nicht genug Bargeld vorhanden!');
+                    return;
+                }
+                if (amount > t.spaceLeft) {
+                    playSound('warn');
+                    alert('Nicht genug Platz auf der Ladefläche!');
+                    return;
+                }
+
+                gameState.cash -= total;
+                gameState.inventory[t.item.id] = (gameState.inventory[t.item.id] || 0) + amount;
+                playSound('buy');
+                addLog(`🛒 Gekauft: **${amount}x ${t.item.name}** für ${total.toLocaleString('de-DE')} €`);
+
+            } else { // SELL
+                if (amount > t.owned) {
+                    playSound('warn');
+                    alert('So viele Besitzt du nicht!');
+                    return;
+                }
+
+                gameState.cash += total;
+                gameState.inventory[t.item.id] -= amount;
+                playSound('sell');
+                addLog(`💰 Verkauft: **${amount}x ${t.item.name}** für ${total.toLocaleString('de-DE')} €`);
+            }
+
+            closeTradeModal();
+            updateUI();
+        }
+
+        // --- TRAVEL & RANDOM EVENTS ---
+        function travelTo(city) {
+            gameState.location = city;
+            gameState.day += 1;
+
+            // Interest calculations
+            if (gameState.debt > 0) {
+                const debtInterest = Math.round(gameState.debt * 0.10); // 10% daily interest
+                gameState.debt += debtInterest;
+            }
+            if (gameState.bank > 0) {
+                const bankInterest = Math.round(gameState.bank * 0.02); // 2% daily bank interest
+                gameState.bank += bankInterest;
+            }
+
+            // Price shift
+            generatePrices();
+
+            // Trigger Random Event
+            triggerRandomEvent();
+
+            // Check End Game
+            if (gameState.day > gameState.maxDays) {
+                endGame();
+                return;
+            }
+
+            playSound('click');
+            switchTab('market');
+            updateUI();
+        }
+
+        function triggerRandomEvent() {
+            const rand = Math.random();
+
+            if (rand < 0.15) { // Vintage Hype Price Explosion
+                const item = GOODS[Math.floor(Math.random() * GOODS.length)];
+                gameState.prices[item.id] *= 3;
+                playSound('event');
+                addLog(`🔥 **HYPE IN ${gameState.location.toUpperCase()}!** Die Nachfrage nach ${item.name} explodiert! Preise verdreifacht!`);
+
+            } else if (rand < 0.28) { // Market Collapse
+                const item = GOODS[Math.floor(Math.random() * GOODS.length)];
+                gameState.prices[item.id] = Math.max(2, Math.floor(gameState.prices[item.id] * 0.25));
+                playSound('warn');
+                addLog(`📉 **MARKT-CRASH!** Niemand will derzeit ${item.name} haben. Die Preise sind im Keller!`);
+
+            } else if (rand < 0.38) { // Customs Check / Zoll
+                const totalItems = getCapacityUsed();
+                if (totalItems > 0) {
+                    const lost = Math.floor(totalItems * 0.3);
+                    if (lost > 0) {
+                        // confiscate items randomly
+                        let remainingToConfiscate = lost;
+                        GOODS.forEach(g => {
+                            if (remainingToConfiscate > 0 && gameState.inventory[g.id] > 0) {
+                                const sub = Math.min(gameState.inventory[g.id], remainingToConfiscate);
+                                gameState.inventory[g.id] -= sub;
+                                remainingToConfiscate -= sub;
+                            }
+                        });
+                        playSound('warn');
+                        addLog(`🚨 **ZOLLKONTROLLE!** Der Zoll hat ${lost} Altkleider-Stücke wegen fehlender Herkunftsnachweise beschlagnahmt!`);
+                    }
+                }
+
+            } else if (rand < 0.48) { // Pickpocket
+                if (gameState.cash > 200) {
+                    const stolen = Math.min(1000, Math.floor(gameState.cash * 0.2));
+                    gameState.cash -= stolen;
+                    playSound('warn');
+                    addLog(`🦹 **TASCHENDIEB!** Ein Flinkfinger hat dir ${stolen} € aus der Tasche gestohlen!`);
+                }
+
+            } else if (rand < 0.58) { // Found rare item
+                const item = GOODS[GOODS.length - 1]; // Rare Band Shirt
+                gameState.inventory[item.id] = (gameState.inventory[item.id] || 0) + 2;
+                playSound('event');
+                addLog(`✨ **GLÜCKSFUND!** Du hast in einem alten Container 2 seltene Band-Shirts entdeckt!`);
+            }
+        }
+
+        // --- FINANCIAL ACTIONS ---
+        function bankDeposit() {
+            if (gameState.cash <= 0) return;
+            playSound('click');
+            gameState.bank += gameState.cash;
+            addLog(`🏦 Bank: **${gameState.cash.toLocaleString('de-DE')} €** eingezahlt.`);
+            gameState.cash = 0;
+            updateUI();
+        }
+
+        function bankWithdraw() {
+            if (gameState.bank <= 0) return;
+            playSound('click');
+            gameState.cash += gameState.bank;
+            addLog(`🏦 Bank: **${gameState.bank.toLocaleString('de-DE')} €** abgehoben.`);
+            gameState.bank = 0;
+            updateUI();
+        }
+
+        function payDebt() {
+            if (gameState.debt <= 0) return;
+            playSound('click');
+            const amount = Math.min(gameState.cash, gameState.debt);
+            if (amount <= 0) {
+                playSound('warn');
+                alert('Du hast kein Bargeld zum Abbezahlen!');
+                return;
+            }
+            gameState.cash -= amount;
+            gameState.debt -= amount;
+            addLog(`🦈 Kredithai: **${amount.toLocaleString('de-DE')} €** Schulden zurückgezahlt.`);
+            updateUI();
+        }
+
+        function takeLoan() {
+            playSound('click');
+            const loan = 1000;
+            gameState.cash += loan;
+            gameState.debt += loan;
+            addLog(`🦈 Kredithai: **${loan.toLocaleString('de-DE')} €** zusätzlichen Kredit aufgenommen.`);
+            updateUI();
+        }
+
+        function buyUpgrade(index) {
+            const upg = UPGRADES[index];
+            if (gameState.cash < upg.price) {
+                playSound('warn');
+                alert('Nicht genug Bargeld für dieses Fahrzeug!');
+                return;
+            }
+
+            playSound('buy');
+            gameState.cash -= upg.price;
+            gameState.vehicleIndex = index;
+            addLog(`🚚 Fuhrpark: Upgrade auf **${upg.name}** für ${upg.price.toLocaleString('de-DE')} € gekauft!`);
+            updateUI();
+        }
+
+        // --- LOGBOOK & HIGHSCORES ---
+        function addLog(msg) {
+            const box = document.getElementById('log-box');
+            const div = document.createElement('div');
+            div.className = "text-slate-300 border-b border-termBorder/30 pb-1";
+            div.innerHTML = `<span class="text-termYellow">[Tag ${gameState.day}]</span> ${msg}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function calculateNetWorth() {
+            return gameState.cash + gameState.bank - gameState.debt;
+        }
+
+        function endGame() {
+            playSound('event');
+            const netWorth = calculateNetWorth();
+
+            document.getElementById('start-title').innerText = 'SPIEL BEENDET!';
+            document.getElementById('start-desc').innerText = `Die ${gameState.maxDays} Tage sind abgelaufen. Hier ist deine Abrechnung:`;
+            
+            document.getElementById('game-over-stats').classList.remove('hidden');
+            document.getElementById('final-networth').innerText = `${netWorth.toLocaleString('de-DE')} €`;
+            document.getElementById('final-cash').innerText = `${gameState.cash.toLocaleString('de-DE')} €`;
+            document.getElementById('final-bank').innerText = `${gameState.bank.toLocaleString('de-DE')} €`;
+            document.getElementById('final-debt').innerText = `${gameState.debt.toLocaleString('de-DE')} €`;
+
+            saveHighscore(netWorth);
+            document.getElementById('game-over-modal').classList.remove('hidden');
+        }
+
+        function saveHighscore(score) {
+            let scores = JSON.parse(localStorage.getItem('altkleider_highscores') || '[]');
+            const date = new Date().toLocaleDateString('de-DE');
+            scores.push({ score, days: gameState.maxDays, date });
+            scores.sort((a, b) => b.score - a.score);
+            scores = scores.slice(0, 5); // Keep top 5
+            localStorage.setItem('altkleider_highscores', JSON.stringify(scores));
+            renderHighscores();
+        }
+
+        function renderHighscores() {
+            const list = document.getElementById('highscore-list');
+            const scores = JSON.parse(localStorage.getItem('altkleider_highscores') || '[]');
+
+            if (scores.length === 0) {
+                list.innerHTML = '<div class="italic">Noch keine Highscores vorhanden.</div>';
+                return;
+            }
+
+            list.innerHTML = scores.map((s, i) => `
+                <div class="flex justify-between border-b border-termBorder/40 py-0.5">
+                    <span>#${i+1} (${s.days} Tage, ${s.date})</span>
+                    <span class="font-bold text-termGreen">${s.score.toLocaleString('de-DE')} €</span>
+                </div>
+            `).join('');
+        }
+
+        // --- INITIAL SETUP ---
+        window.onload = function() {
+            renderHighscores();
+        };
+    </script>
+</body>
+</html>
